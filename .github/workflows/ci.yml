@@ -59,10 +59,5 @@ jobs:
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
           AIRFLOW__CORE__UNIT_TEST_MODE: "True"
         run: |
-          set -x
-          echo "=== airflow version ==="
-          airflow version || echo "EXIT_CODE: $?"
-          echo "=== airflow db migrate ==="
-          airflow db migrate || echo "EXIT_CODE: $?"
-          echo "=== pytest ==="
-          pytest tests/ -v --tb=short || echo "EXIT_CODE: $?"
+          airflow db migrate
+          pytest tests/ -v --tb=short

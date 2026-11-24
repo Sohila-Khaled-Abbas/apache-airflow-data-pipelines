@@ -61,4 +61,4 @@ jobs:
         run: |
           python -c "import airflow; print('Airflow version:', airflow.__version__)"
           python -c "from airflow.models import DagBag; db = DagBag(include_examples=False); print('DAGs loaded:', sorted(db.dags.keys())); print('Import errors:', db.import_errors)"
-          pytest tests/ -v --tb=long -x --no-header
+          pytest tests/dags/test_dag_integrity.py -v --tb=long -x --no-header

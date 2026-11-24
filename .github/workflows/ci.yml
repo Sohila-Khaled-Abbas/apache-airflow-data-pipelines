@@ -59,5 +59,4 @@ jobs:
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
           AIRFLOW__CORE__UNIT_TEST_MODE: "True"
         run: |
-          airflow db migrate
           pytest tests/ -v --tb=short

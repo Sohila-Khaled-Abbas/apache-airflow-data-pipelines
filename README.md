@@ -64,7 +64,7 @@ graph LR
         CDB[TheCocktailDB API]
     end
 
-    subgraph Orchestration -- Apache Airflow 3.1.8
+    subgraph Orchestration["Apache Airflow 3.1.8"]
         SM[stock_market DAG]
         EX[extractor DAG]
         CL[cocktail_loader DAG]

@@ -4,7 +4,7 @@ import json
 import os
 import requests
 from airflow.exceptions import AirflowFailException
-from airflow.sdk import Variable
+from airflow.models import Variable
 
 from include.datasets import Dataset_cocktail
 

@@ -36,11 +36,32 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.astro,venv,__pycache__,spark
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics --exclude=.astro,venv,__pycache__,spark
 
+      - name: Verify Python Imports
+        env:
+          AIRFLOW_HOME: ${{ github.workspace }}
+          AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+        run: |
+          python -c "from airflow.models import Variable, BaseHook; print('Variable and BaseHook imported successfully')"
+          python -c "from airflow.sdk import dag, task, task_group, PokeReturnValue, Asset; print('SDK imports successful')"
+          python -c "from include.datasets import Dataset_cocktail; print('Dataset_cocktail imported successfully')"
+          python -c "from include.stock_market.tasks import _get_minio_client, _get_stock_prices, _store_prices, _get_formatted_csv; print('Stock market tasks imported successfully')"
+          python -c "from include.tasks import _get_cocktail, _check_size, _check_json_data; print('Cocktail tasks imported successfully')"
+          python -c "import dags.stock_market; print('stock_market DAG imported successfully')"
+          python -c "import dags.extractor; print('extractor DAG imported successfully')"
+          python -c "import dags.cocktail_loader; print('cocktail_loader DAG imported successfully')"
+          python -c "import dags.ecom; print('ecom DAG imported successfully')"
+          python -c "import dags.celery_parallelism_demo; print('celery_parallelism_demo DAG imported successfully')"
+
       - name: Run DAG Integrity & AST Architecture Tests
         env:
           AIRFLOW_HOME: ${{ github.workspace }}
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
           AIRFLOW__CORE__UNIT_TEST_MODE: "True"
         run: |
+          set -x
+          echo "=== airflow version ==="
+          airflow version
+          echo "=== airflow db migrate ==="
           airflow db migrate
+          echo "=== pytest ==="
           pytest tests/ -v --tb=short

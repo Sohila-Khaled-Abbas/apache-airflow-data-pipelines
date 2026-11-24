@@ -1,0 +1,27 @@
+# Security Policy
+
+## Supported Versions
+
+This repository is a learning portfolio for Apache Airflow coursework. Security patches are not formally issued for historical course sections.
+
+| Version | Supported |
+|---------|-----------|
+| Current `main` branch | ✅ |
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability in this repository (e.g., exposed credentials, insecure DAG patterns, hardcoded secrets), please:
+
+1. **Do not** open a public issue for security concerns.
+2. Contact the repository maintainer directly via GitHub.
+3. Include details of the vulnerability, steps to reproduce, and suggested remediation.
+
+## Security Best Practices in This Repo
+
+- **No secrets committed**: `.env`, `airflow_settings.yaml`, and `airflow.db` are in `.gitignore`
+- **Example configs only**: `airflow_settings.example.yaml` and `.env.example` contain placeholder values
+- **Connection IDs referenced, not hardcoded**: DAGs reference Airflow connections by ID; values are injected at runtime
+
+## Disclosure
+
+We will acknowledge receipt of your report within 5 business days and provide an initial assessment within 10 business days.

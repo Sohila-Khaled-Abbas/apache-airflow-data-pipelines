@@ -1,0 +1,7 @@
+# Astro Runtime includes core Airflow and common pre-installed providers:
+# https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
+apache-airflow-providers-postgres
+apache-airflow-providers-docker>=4.0.0
+minio==7.2.14
+requests>=2.31.0
+pytest>=8.0.0

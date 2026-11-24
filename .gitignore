@@ -1,0 +1,143 @@
+# =============================================================================
+# Apache Airflow Portfolio — .gitignore
+# =============================================================================
+
+# --- Byte-compiled / optimized / DLL files ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- C extensions ---
+*.egg-info/
+*.egg
+*.dist-info/
+.build/
+.develop-eggs/
+dist/
+bin/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-link
+
+# --- Virtual environments & dependency caches ---
+.venv/
+venv/
+ENV/
+env/
+.venv*/
+.venv*/
+.python-version
+.pip-cache/
+.pip-cache/*
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Astro CLI / Airflow runtime ---
+.astro/
+.env
+.env.local
+.env.*.local
+airflow_settings.yaml
+airflow_settings.*.yaml
+airflow.db
+airflow.cfg
+airflow-webserver.pid
+webserver_config.py
+logs/
+logs/*
+*.log
+
+# --- Local volume storage & datasets ---
+include/data/minio/
+include/data/metabase/
+include/data/
+spark/master/data/
+spark/worker/data/
+/tmp/cocktail.json
+data/
+datasets/
+
+# --- IDE / Editor artifacts ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# --- Operating System files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+._*
+.Spotlight-V100
+.Trashes
+
+# --- macOS / Windows junk ---
+__MACOSX/
+*.orig
+*.rej
+
+# --- Docker / container artifacts ---
+.docker/
+.dockerenv
+container/*
+
+# --- Testing & coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+junit.xml
+.testrepository/
+.testr/
+.unit_tests/
+
+# --- Type checkers / linters ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# --- Sphinx / documentation builds ---
+docs/_build/
+docs/build/
+site/
+_site/
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# --- Secrets / sensitive configuration ---
+*.pem
+*.key
+*.secret
+secrets/
+secret/
+credentials/
+*.env
+.env.example
+
+# --- Course materials snapshots (reference only — do not track derived data) ---
+course-materials/udemy-hands-on-guide/*/__pycache__/
+course-materials/udemy-hands-on-guide/*/airflow_settings.yaml
+course-materials/udemy-hands-on-guide/*/.env
+course-materials/udemy-hands-on-guide/*/.DS_Store
+course-materials/udemy-hands-on-guide/*/__MACOSX/
+course-materials/udemy-hands-on-guide/*/airflow.db
+course-materials/udemy-hands-on-guide/*/include/data/
+course-materials/udemy-hands-on-guide/*/spark/*/data/
+
+# --- End of .gitignore ---

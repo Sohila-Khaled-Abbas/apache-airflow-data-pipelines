@@ -18,7 +18,7 @@ graph TB
         DB[(Metadata DB: PostgreSQL)]
     end
 
-    subgraph Optional Stock-Market Stack --profile stock-market
+    subgraph OptionalStockMarketStack["Stock-Market Stack (profile: stock-market)"]
         MINIO[(MinIO Object Storage S3)]
         SPARK_M[Apache Spark Master]
         SPARK_W[Apache Spark Worker]

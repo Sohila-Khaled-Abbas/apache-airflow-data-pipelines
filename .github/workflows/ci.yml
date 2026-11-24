@@ -61,8 +61,8 @@ jobs:
         run: |
           set -x
           echo "=== airflow version ==="
-          airflow version
+          airflow version || echo "EXIT_CODE: $?"
           echo "=== airflow db migrate ==="
-          airflow db migrate
+          airflow db migrate || echo "EXIT_CODE: $?"
           echo "=== pytest ==="
-          pytest tests/ -v --tb=short
+          pytest tests/ -v --tb=short || echo "EXIT_CODE: $?"

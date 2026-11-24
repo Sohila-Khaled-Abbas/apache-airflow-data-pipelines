@@ -17,7 +17,7 @@ from airflow.exceptions import AirflowFailException
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.models import BaseHook
+from airflow.hooks.base import BaseHook
 from airflow.sdk import PokeReturnValue, dag, task
 import requests
 

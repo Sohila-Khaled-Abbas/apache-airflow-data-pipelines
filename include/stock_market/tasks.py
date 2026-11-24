@@ -7,7 +7,7 @@ from io import BytesIO
 import json
 import logging
 from airflow.exceptions import AirflowFailException, AirflowNotFoundException
-from airflow.models import BaseHook
+from airflow.hooks.base import BaseHook
 from minio import Minio
 import requests
 

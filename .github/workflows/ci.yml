@@ -59,4 +59,5 @@ jobs:
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
           AIRFLOW__CORE__UNIT_TEST_MODE: "True"
         run: |
-          pytest tests/ -v --tb=short
+          python -c "from airflow.models import DagBag; db = DagBag(include_examples=False); print('DAGs loaded:', list(db.dags.keys())); print('Errors:', db.import_errors)"
+          pytest tests/ -v --tb=long -x

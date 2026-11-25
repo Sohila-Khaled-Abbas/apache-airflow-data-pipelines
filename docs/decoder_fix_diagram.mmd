@@ -1,0 +1,47 @@
+%% Before/After Fix Diagram
+%% Shows the syntax error fix for celery.py
+
+graph LR
+    style Title fill:#2c3e50,color:white,font-size:14px,font-weight:bold
+
+    Title["Celery DAG Syntax Fix"]
+
+    %% Before section
+    subgraph Before [Before (INCORRECT)]
+        style Before fill:#ffebee,stroke:#f44336,stroke-width:2px
+        
+        B1["@dag(...)\n"] 
+        B2["def celery():@task(executor=\"celery\")<br/><span style='color:#f44336'>✗ Parse Error</span>"]
+        B3["Expected class, function definition or async function definition after decorator"]
+    end
+
+    %% Arrow pointing to the error
+    B1 -->|invalid syntax| B2
+
+    %% After section
+    subgraph After [After (CORRECT)]
+        style After fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+        
+        A1["@dag(...)\n"]
+        A2["def celery():"]
+        A3["    @task"]
+        A4["    def a():"]
+        A5["        print(\"A\")"]
+        A6["        sleep(15)"]
+    end
+
+    A1 -->|valid| A2
+    A2 -->|indented| A3
+    A3 -->|indented| A4
+    A4 -->|indented| A5
+    A5 -->|indented| A6
+
+    %% Connection between before and after
+    B2 -.->|fix applied| A2
+
+    %% Key takeaway
+    takeaway["Key Learning:\n1. Always put decorator on its own line\n2. Add newline between @dag and def\n3. Use @task on tasks inside DAG, not on DAG itself"]
+    takeaway -.->|Summary| B2
+
+    classDef subgraph fill:#f5f5f5,stroke:#ccc,stroke-dasharray:5,5
+    class Before,After,DAG_celery subgraph

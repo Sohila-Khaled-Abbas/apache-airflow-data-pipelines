@@ -4,7 +4,6 @@ import json
 import os
 import requests
 from airflow.exceptions import AirflowFailException
-from airflow.models import Variable
 
 from include.datasets import Dataset_cocktail
 
@@ -13,7 +12,7 @@ DEFAULT_API = "https://www.thecocktaildb.com/api/json/v1/1/random.php"
 
 def _get_cocktail(ti=None) -> int:
     """Fetch random cocktail JSON from API and persist to the shared asset path."""
-    api = Variable.get("api", default=DEFAULT_API)
+    api = os.environ.get("COCKTAIL_API", DEFAULT_API)
     try:
         response = requests.get(api, timeout=15)
         response.raise_for_status()

@@ -1,0 +1,37 @@
+%% Celery DAG Flow Diagram
+%% This diagram illustrates the task dependency pattern in celery.py
+
+graph TD
+    %% Style for the DAG subgraph
+    classDef dag fill:#e8f0fe,stroke:#2c3e50,stroke-width:2px,rx:5,ry:5
+    classDef task fill:#4CAF50,color:white,stroke:none,rx:3,ry:3
+    classDef dependency stroke:#e74c3c,stroke-width:2,dasharray:5,5
+
+    subgraph DAG_celery [DAG: celery]
+        A[@task<br/>def a()]:::task
+        B[@task<br/>def b()]:::task
+        C[@task<br/>def c()]:::task
+        D[@task<br/>def d()]:::task
+    end
+
+    %% Dependency arrows
+    A -->|>> [b, c, d]| B
+    A -->|>> [b, c, d]| C
+    A -->|>> [b, c, d]| D
+
+    %% Parallel execution styling
+    B -.->|parallel| C
+    C -.->|parallel| D
+
+    %% Bottom note
+    note1 [Dependencies:<br/>a() >> [b(), c(), d()]]
+    note1 -->|style=filled;<br/>style=#fff;<br/>fill-color:#fff3e0| A
+
+    %% Legend
+    legend1 [Legend]
+    legend1 -->|Green Tasks| task
+    legend1 -->|Red Dashed| dependency
+    legend1 |> Blue DAG| dag
+
+    class DAG_celery dag
+    class A,B,C,D task

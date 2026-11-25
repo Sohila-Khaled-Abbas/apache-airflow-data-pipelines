@@ -2,6 +2,17 @@
 Celery & Distributed Parallelism Demonstration DAG
 Demonstrates fan-out concurrent execution across worker processes or distributed
 Celery queues, converging back to a downstream aggregation step.
+
+This DAG is designed to work with the CeleryExecutor configuration in
+infra/celery/docker-compose.yaml. To run with Celery:
+
+    # Using the included Celery stack
+    cd infra/celery
+    docker-compose up -d
+
+    # Or with Airflow directly
+    export AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+    airflow celery worker
 """
 
 from datetime import timedelta
@@ -18,7 +29,7 @@ from pendulum import datetime
         "retries": 2,
         "retry_delay": timedelta(seconds=5),
     },
-    tags=["executors", "celery", "concurrency"],
+    tags=["executors", "celery", "concurrency", "demo"],
     description="Demonstrates parallel fan-out task execution for Celery/Local executor benchmarking",
 )
 def celery_parallelism_demo():

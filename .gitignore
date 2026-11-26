@@ -44,6 +44,7 @@ pip-delete-this-directory.txt
 .env.*.local
 airflow_settings.yaml
 airflow_settings.*.yaml
+!airflow_settings.example.yaml
 airflow.db
 airflow.cfg
 airflow-webserver.pid
@@ -128,7 +129,8 @@ secrets/
 secret/
 credentials/
 *.env
-.env.example
+!.env.example
+!infra/celery/.env.example
 
 # --- Course materials snapshots (reference only — do not track derived data) ---
 course-materials/udemy-hands-on-guide/*/__pycache__/

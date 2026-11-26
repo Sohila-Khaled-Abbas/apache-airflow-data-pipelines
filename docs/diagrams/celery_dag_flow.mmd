@@ -1,37 +1,29 @@
-%% Celery DAG Flow Diagram
-%% This diagram illustrates the task dependency pattern in celery.py
+%% Celery DAG Flow & Multi-Queue Routing Diagram
+%% Illustrates task dependencies and worker queue routing in infra/celery/dags/celery.py
 
 graph TD
-    %% Style for the DAG subgraph
-    classDef dag fill:#e8f0fe,stroke:#2c3e50,stroke-width:2px,rx:5,ry:5
-    classDef task fill:#4CAF50,color:white,stroke:none,rx:3,ry:3
-    classDef dependency stroke:#e74c3c,stroke-width:2,dasharray:5,5
+    classDef dag fill:#e8f0fe,stroke:#2c3e50,stroke-width:2px
+    classDef cpuTask fill:#2e7d32,color:#ffffff,stroke:none
+    classDef gpuTask fill:#1565c0,color:#ffffff,stroke:none
+    classDef queueNode fill:#fff3e0,stroke:#ef6c00,stroke-width:1px
 
-    subgraph DAG_celery [DAG: celery]
-        A[@task<br/>def a()]:::task
-        B[@task<br/>def b()]:::task
-        C[@task<br/>def c()]:::task
-        D[@task<br/>def d()]:::task
+    subgraph DAG_celery["DAG: celery (CeleryExecutor)"]
+        A["@task(queue='cpu')<br/>def a()"]:::cpuTask
+        B["@task(queue='gpu')<br/>def b()"]:::gpuTask
+        C["@task(queue='cpu')<br/>def c()"]:::cpuTask
+        D["@task(queue='cpu')<br/>def d()"]:::cpuTask
     end
 
-    %% Dependency arrows
-    A -->|>> [b, c, d]| B
-    A -->|>> [b, c, d]| C
-    A -->|>> [b, c, d]| D
+    A -->|"a() >> [b(), c(), d()]"| B
+    A -->|"a() >> [b(), c(), d()]"| C
+    A -->|"a() >> [b(), c(), d()]"| D
 
-    %% Parallel execution styling
-    B -.->|parallel| C
-    C -.->|parallel| D
+    Q_CPU[("Queue: cpu<br/>airflow-worker-2 (-q cpu)")]:::queueNode
+    Q_GPU[("Queue: gpu<br/>airflow-worker (-q gpu)")]:::queueNode
 
-    %% Bottom note
-    note1 [Dependencies:<br/>a() >> [b(), c(), d()]]
-    note1 -->|style=filled;<br/>style=#fff;<br/>fill-color:#fff3e0| A
-
-    %% Legend
-    legend1 [Legend]
-    legend1 -->|Green Tasks| task
-    legend1 -->|Red Dashed| dependency
-    legend1 |> Blue DAG| dag
+    A -.-> Q_CPU
+    C -.-> Q_CPU
+    D -.-> Q_CPU
+    B -.-> Q_GPU
 
     class DAG_celery dag
-    class A,B,C,D task

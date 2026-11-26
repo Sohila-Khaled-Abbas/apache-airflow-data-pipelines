@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-This repository is a learning portfolio for Apache Airflow coursework. Security patches are not formally issued for historical course sections.
+This repository is a learning portfolio for Apache Airflow coursework. Security patches are not formally issued for historical course snapshots.
 
 | Version | Supported |
-|---------|-----------|
-| Current `main` branch | ✅ |
+|---|---|
+| Current `main` branch | Yes |
 
 ## Reporting a Vulnerability
 
@@ -18,9 +18,9 @@ If you discover a security vulnerability in this repository (e.g., exposed crede
 
 ## Security Best Practices in This Repo
 
-- **No secrets committed**: `.env`, `airflow_settings.yaml`, and `airflow.db` are in `.gitignore`
-- **Example configs only**: `airflow_settings.example.yaml` and `.env.example` contain placeholder values
-- **Connection IDs referenced, not hardcoded**: DAGs reference Airflow connections by ID; values are injected at runtime
+- **No secrets committed**: `.env`, `infra/celery/.env`, `airflow_settings.yaml`, and `airflow.db` are ignored in [`.gitignore`](.gitignore).
+- **Example configs only**: [`airflow_settings.example.yaml`](airflow_settings.example.yaml), [`.env.example`](.env.example), and [`infra/celery/.env.example`](infra/celery/.env.example) contain local-dev defaults/placeholders only.
+- **Connection IDs referenced, not hardcoded**: DAGs reference Airflow connections by ID; values are injected at runtime.
 
 ## Disclosure
 

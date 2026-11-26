@@ -11,7 +11,6 @@ Validates:
 import ast
 import glob
 import pytest
-from airflow.models import DagBag
 
 EXPECTED_DAG_IDS = {
     "stock_market",
@@ -25,6 +24,8 @@ EXPECTED_DAG_IDS = {
 @pytest.fixture(scope="session")
 def dag_bag():
     """Load all workspace DAGs without tutorial examples."""
+    from airflow.models import DagBag
+
     return DagBag(include_examples=False)
 
 

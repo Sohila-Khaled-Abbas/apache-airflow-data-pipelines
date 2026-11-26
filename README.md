@@ -14,11 +14,11 @@
 
 </div>
 
-A production-structured **Apache Airflow 3** portfolio repository showcasing end-to-end ETL/ELT pipelines, event-driven Asset scheduling, distributed **PySpark** transformations over **MinIO (S3)**, **PostgreSQL** data warehousing, multi-executor infrastructure templates (`Local`, `Celery`, `Kubernetes`), and automated **CI/CD DAG integrity guardrails**.
+A production-structured **Apache Airflow 3** portfolio repository showcasing end-to-end ETL/ELT pipelines, event-driven Asset scheduling, distributed **PySpark** transformations over **MinIO (S3)**, **PostgreSQL** data warehousing, multi-executor infrastructure templates (`Local`, multi-queue `Celery`, `Kubernetes`), and automated **CI/CD DAG integrity & AST guardrails**.
 
 ---
 
-> **🎓 Learning Evidence** — This repository is published as evidence of learning for the **Apache Airflow: The Hands-On Guide** course. All course section materials are preserved under [`course-materials/udemy-hands-on-guide/`](./course-materials/udemy-hands-on-guide/) alongside the capstone portfolio implementation.
+> **Learning Evidence** — This repository is published as evidence of learning for the **Apache Airflow: The Hands-On Guide** course. All historical course section snapshots are preserved under [`course-materials/udemy-hands-on-guide/`](./course-materials/udemy-hands-on-guide/) alongside the consolidated capstone portfolio in the repository root.
 
 ---
 
@@ -30,6 +30,7 @@ A production-structured **Apache Airflow 3** portfolio repository showcasing end
 - [Featured Pipelines](#featured-pipelines)
   - [1. Stock Market Data Lakehouse](#1-stock-market-data-lakehouse)
   - [2. Asset-Driven Cocktail ETL](#2-asset-driven-cocktail-etl)
+  - [3. Distributed Celery & Multi-Queue Routing](#3-distributed-celery--multi-queue-routing)
 - [Performance & Reliability Case Study](#performance--reliability-case-study)
 - [Course Materials (Udemy)](#course-materials-udemy)
 - [Repository Structure](#repository-structure)
@@ -43,15 +44,15 @@ A production-structured **Apache Airflow 3** portfolio repository showcasing end
 ## Learning Outcomes
 
 | # | Competency | Evidence in Repo |
-|---|-----------|------------------|
-| 1 | **Airflow 3 SDK & TaskFlow API** | `@dag`, `@task`, `@task_group`, `@task.branch`, `@task.sensor` across `dags/` |
-| 2 | **Data-Aware Scheduling (Assets)** | `include/datasets.py` — producer `extractor` → consumers `cocktail_loader`, `ecom` |
-| 3 | **Distributed Compute & Storage** | MinIO S3 lake + containerized Spark Master/Worker cluster in `spark/` |
+|---|---|---|
+| 1 | **Airflow 3 SDK & TaskFlow API** | `@dag`, `@task`, `@task_group`, `@task.branch`, `@task.sensor` across [`dags/`](dags/) |
+| 2 | **Data-Aware Scheduling (Assets)** | [`include/datasets.py`](include/datasets.py) — producer `extractor` -> consumers `cocktail_loader`, `ecom` |
+| 3 | **Distributed Compute & Storage** | MinIO S3 lake + containerized Spark Master/Worker cluster in [`spark/`](spark/) |
 | 4 | **Data Warehouse Loading** | Idempotent `ON CONFLICT` upserts into PostgreSQL (`stock_market`, `cocktails`) |
-| 5 | **Executors & Scaling** | `Local`, `Celery` (+Redis), `KubernetesExecutor` Helm values in `infra/` |
-| 6 | **CI/CD & Quality Guardrails** | `.github/workflows/ci.yml` + `tests/dags/test_dag_integrity.py` (AST anti-pattern, cycle, retry checks) |
-| 7 | **Production Troubleshooting** | `docs/troubleshooting_guide.md` — scheduler heartbeat, module-scope DB thrashing, file race conditions |
-| 8 | **Infrastructure as Code** | Docker Compose profiles, Kubernetes `values.yaml`, `.env` tuning, `airflow_settings.yaml` |
+| 5 | **Executors & Multi-Queue Scaling** | `Local`, `Celery` (+Redis + `cpu`/`gpu` queues + Flower), `KubernetesExecutor` Helm values in [`infra/`](infra/) |
+| 6 | **CI/CD & Quality Guardrails** | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) + [`tests/dags/test_dag_integrity.py`](tests/dags/test_dag_integrity.py) + [`tests/unit/`](tests/unit/) |
+| 7 | **Production Troubleshooting** | [`docs/troubleshooting_guide.md`](docs/troubleshooting_guide.md) — scheduler heartbeat stalls, module-scope DB thrashing, file races |
+| 8 | **Infrastructure as Code** | Docker Compose profiles, Kubernetes `values.yaml`, `.env.example` tuning, `airflow_settings.example.yaml` |
 
 ---
 
@@ -59,24 +60,24 @@ A production-structured **Apache Airflow 3** portfolio repository showcasing end
 
 ```mermaid
 graph LR
-    subgraph External Sources
-        YF[Yahoo Finance API]
-        CDB[TheCocktailDB API]
+    subgraph ExternalSources["External Sources"]
+        YF["Yahoo Finance API"]
+        CDB["TheCocktailDB API"]
     end
 
     subgraph Orchestration["Apache Airflow 3.1.8"]
-        SM[stock_market DAG]
-        EX[extractor DAG]
-        CL[cocktail_loader DAG]
-        EC[ecom DAG]
-        ASSET((Airflow Asset))
+        SM["stock_market DAG"]
+        EX["extractor DAG"]
+        CL["cocktail_loader DAG"]
+        EC["ecom DAG"]
+        ASSET(("Airflow Asset"))
     end
 
-    subgraph Compute & Storage
-        MINIO[(MinIO S3 Lake)]
-        SPARK[PySpark Cluster]
-        PG[(PostgreSQL DW)]
-        MB[Metabase BI]
+    subgraph ComputeStorage["Compute & Storage"]
+        MINIO[("MinIO S3 Lake")]
+        SPARK["PySpark Cluster"]
+        PG[("PostgreSQL DW")]
+        MB["Metabase BI"]
     end
 
     YF --> SM
@@ -96,13 +97,21 @@ graph LR
 
 ## DAG Catalog
 
+### Primary Airflow 3.1.8 Portfolio DAGs (`dags/`)
+
 | DAG ID | Schedule | Pattern Highlight | Target Sink | File |
 |---|---|---|---|---|
 | `stock_market` | `@daily` | TaskFlow Sensor (`PokeReturnValue`), `DockerOperator` + PySpark, S3-to-Postgres loader | MinIO & PostgreSQL | [stock_market.py](dags/stock_market.py) |
 | `extractor` | `@daily` | TaskGroups, `@task.branch`, `TriggerRule`, callbacks, Asset producer | Local Asset (`Dataset_cocktail`) | [extractor.py](dags/extractor.py) |
 | `cocktail_loader` | `[Dataset_cocktail]` | Data-aware Asset consumer, transactional SQL upserts (`ON CONFLICT`) | PostgreSQL (`cocktails`) | [cocktail_loader.py](dags/cocktail_loader.py) |
 | `ecom` | `[Dataset_cocktail]` | Lightweight downstream Asset subscriber with timeout & failure limits | Downstream workflow | [ecom.py](dags/ecom.py) |
-| `celery_parallelism_demo` | `Manual` | Parallel fan-out task orchestration for `Local`/`Celery` benchmarking | Stdout / XCom | [celery_parallelism_demo.py](dags/celery_parallelism_demo.py) |
+| `celery_parallelism_demo` | `Manual` (`None`) | Parallel fan-out task orchestration for `Local`/`Celery` benchmarking | Stdout / XCom | [celery_parallelism_demo.py](dags/celery_parallelism_demo.py) |
+
+### Standalone Celery Compose Stack DAG (`infra/celery/dags/`)
+
+| DAG ID | Airflow Runtime | Pattern Highlight | Target Queues | File |
+|---|---|---|---|---|
+| `celery` | `2.10.5` | Multi-queue `@task(queue=...)` fan-out across specialized worker containers | `cpu`, `gpu` | [celery.py](infra/celery/dags/celery.py) |
 
 ---
 
@@ -110,49 +119,56 @@ graph LR
 
 ### 1. Stock Market Data Lakehouse
 
-An automated market data lakehouse pipeline (`dags/stock_market.py`):
+An automated market data lakehouse pipeline ([`dags/stock_market.py`](dags/stock_market.py)):
 
 1. **Probe (`is_api_available`)**: Custom `@task.sensor` returning `PokeReturnValue` checks Yahoo Finance API health before running compute tasks.
 2. **Extract (`get_stock_prices`)**: Queries 1-year daily OHLCV market history for `NVDA`.
 3. **Stage (`store_prices`)**: Persists raw JSON into MinIO S3 bucket `stock-market`.
-4. **Transform (`format_prices`)**: Launches an ephemeral PySpark application container (`spark/notebooks/stock_transform/stock_transform.py`) connected to `spark-master` via `DockerOperator` to normalize nested JSON arrays into clean CSV partitions.
-5. **Discover & Load (`get_formatted_csv` -> `load_to_dw`)**: Locates the Spark output partition in MinIO and streams rows idempotently into `public.stock_market` in PostgreSQL.
+4. **Transform (`format_prices`)**: Launches an ephemeral PySpark application container ([`spark/notebooks/stock_transform/stock_transform.py`](spark/notebooks/stock_transform/stock_transform.py)) connected to `spark-master` via `DockerOperator` to normalize nested JSON arrays into clean CSV partitions.
+5. **Discover & Load (`get_formatted_csv` -> `load_to_dw`)**: Locates the Spark output partition in MinIO and streams rows idempotently into `stock_market` in PostgreSQL.
 
 ### 2. Asset-Driven Cocktail ETL
 
 An event-driven multi-DAG workflow demonstrating modern Airflow 3 **Assets**:
 
-- **`extractor`** fetches cocktail records, validates JSON schema and byte size inside a `@task_group`, dynamically routes execution via `@task.branch` (`alcoholic_drink` vs. `non_alcoholic_drink`), executes cleanup with `TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS`, and updates `Dataset_cocktail`.
+- **`extractor`** fetches cocktail records (reading `COCKTAIL_API` at runtime via environment variable with public API fallback), validates JSON schema and byte size inside a `@task_group`, dynamically routes execution via `@task.branch` (`alcoholic_drink` vs. `non_alcoholic_drink`), verifies retention with `TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS`, and emits `Dataset_cocktail`.
 - **`cocktail_loader`** and **`ecom`** activate automatically upon Asset updates without fragile cron polling.
+
+### 3. Distributed Celery & Multi-Queue Routing
+
+Two complementary Celery demonstrations show scaling and queue isolation:
+
+- **[`dags/celery_parallelism_demo.py`](dags/celery_parallelism_demo.py)**: Airflow 3 SDK fan-out (`prepare_batch >> [worker_alpha, worker_beta, worker_gamma] >> aggregate_results`).
+- **[`infra/celery/dags/celery.py`](infra/celery/dags/celery.py)**: Airflow 2.10.5 Compose stack with Redis, Flower (`:5555`), and two dedicated worker queues (`airflow-worker` on `-q gpu` and `airflow-worker-2` on `-q cpu`). See [`docs/celery_dag_pattern.md`](docs/celery_dag_pattern.md) and [`infra/celery/README.md`](infra/celery/README.md).
 
 ---
 
 ## Performance & Reliability Case Study
 
-During development on a constrained local Docker Desktop WSL2 environment, three production-style issues were diagnosed and resolved (full write-up in [Troubleshooting Guide](docs/troubleshooting_guide.md)):
+During development on a constrained local Docker Desktop WSL2 environment, four production-style issues were diagnosed and resolved (full write-up in [Troubleshooting Guide](docs/troubleshooting_guide.md)):
 
-1. **Scheduler Heartbeat Starvation (`634s` stalls)**: Heavy background containers starved the shared WSL2 engine, causing Docker API `500` errors and missed Airflow scheduler heartbeats. Stopping competing containers, resetting the WSL2 engine, tuning `.env` (`AIRFLOW__CORE__PARALLELISM=6`), and isolating heavy Spark/Metabase containers behind a Docker Compose `stock-market` profile restored sub-second responsiveness.
-2. **Module-Scope DB Thrashing**: Eliminated top-level `Variable.get()` calls from `include/tasks.py` and enforced a static AST CI test (`test_no_top_level_variable_or_hook_calls`) so scheduler parse loops never hammer the metadata DB.
+1. **Scheduler Heartbeat Starvation (`634s` stalls)**: Heavy background containers starved the shared WSL2 engine, causing Docker API `500` errors and missed Airflow scheduler heartbeats. Stopping competing containers, resetting WSL2, tuning `.env` (`AIRFLOW__CORE__PARALLELISM=6`), and isolating heavy Spark/Metabase services under the `stock-market` Compose profile restored sub-second responsiveness.
+2. **Module-Scope DB Thrashing**: Eliminated top-level `Variable.get()` calls from `include/tasks.py` (using runtime `os.environ.get` lookup and Jinja templates in `extractor.py`) and enforced a static AST CI test (`test_no_top_level_variable_or_hook_calls`) so scheduler parse loops never hammer the metadata DB.
 3. **Cross-DAG File Race Condition**: Resolved intermittent `cocktail_loader` failures caused by `extractor` deleting `/tmp/cocktail.json` while the Asset-triggered downstream DAG attempted to ingest it.
-4. **Airflow 3 Compatibility**: Replaced legacy `astro-sdk-python` (`core/enable_xcom_pickling` error on Airflow 3) with a native Airflow 3 `Minio` + `PostgresHook` loader.
+4. **Airflow 3 Compatibility**: Replaced legacy `astro-sdk-python` (`core/enable_xcom_pickling` error on Airflow 3) with a native Airflow 3 `Minio` + `PostgresHook` loader, and fixed `airflow.hooks.base.BaseHook` imports.
 
 ---
 
 ## Course Materials (Udemy)
 
-All **course section snapshots** from *Apache Airflow: The Hands-On Guide* are preserved under [`course-materials/udemy-hands-on-guide/`](./course-materials/udemy-hands-on-guide/) for reference and comparison against the capstone implementation.
+All **course section snapshots** from *Apache Airflow: The Hands-On Guide* are preserved under [`course-materials/udemy-hands-on-guide/`](./course-materials/udemy-hands-on-guide/) for reference and comparison against the capstone implementation. See [`docs/course_materials_guide.md`](docs/course_materials_guide.md) for details.
 
 | Section | Contents | Location |
-|---------|----------|----------|
-| `course_sec_4_2` | DAGs, include, plugins, tests, Astro config | [`course-materials/udemy-hands-on-guide/course_sec_4_2/`](./course-materials/udemy-hands-on-guide/course_sec_4_2/) |
-| `course_sec_4_6` | Airflow project scaffolding | [`course-materials/udemy-hands-on-guide/course_sec_4_6/`](./course-materials/udemy-hands-on-guide/course_sec_4_6/) |
-| `course_sec_4_9` | DAG integrity tests, Astro runtime config | [`course-materials/udemy-hands-on-guide/course_sec_4_9/`](./course-materials/udemy-hands-on-guide/course_sec_4_9/) |
-| `course_sec_4_10` | Course section 4.10 materials | [`course-materials/udemy-hands-on-guide/course_sec_4_10/`](./course-materials/udemy-hands-on-guide/course_sec_4_10/) |
-| `course_sec_4_11` | Course section 4.11 materials | [`course-materials/udemy-hands-on-guide/course_sec_4_11/`](./course-materials/udemy-hands-on-guide/course_sec_4_11/) |
-| `course_sec_4_12` | Course section 4.12 materials | [`course-materials/udemy-hands-on-guide/course_sec_4_12/`](./course-materials/udemy-hands-on-guide/course_sec_4_12/) |
-| `course_sec_4_13` | Course section 4.13 materials | [`course-materials/udemy-hands-on-guide/course_sec_4_13/`](./course-materials/udemy-hands-on-guide/course_sec_4_13/) |
+|---|---|---|
+| `course_sec_4_2` | Initial Astro project scaffolding & empty `ecom` DAG | [`course_sec_4_2/`](./course-materials/udemy-hands-on-guide/course_sec_4_2/) |
+| `course_sec_4_6` | Basic `ecom` DAG structure | [`course_sec_4_6/`](./course-materials/udemy-hands-on-guide/course_sec_4_6/) |
+| `course_sec_4_9` | Early `extractor` + `ecom` DAGs & integrity tests | [`course_sec_4_9/`](./course-materials/udemy-hands-on-guide/course_sec_4_9/) |
+| `course_sec_4_10` | Section 4.10 progression | [`course_sec_4_10/`](./course-materials/udemy-hands-on-guide/course_sec_4_10/) |
+| `course_sec_4_11` | `Dataset` scheduling & `include/tasks.py` | [`course_sec_4_11/`](./course-materials/udemy-hands-on-guide/course_sec_4_11/) |
+| `course_sec_4_12` | Extractor lifecycle callbacks | [`course_sec_4_12/`](./course-materials/udemy-hands-on-guide/course_sec_4_12/) |
+| `course_sec_4_13` | Unit testing introduction (`test_check_size.py`) | [`course_sec_4_13/`](./course-materials/udemy-hands-on-guide/course_sec_4_13/) |
 
-> **Note**: Sensitive/local files (`.env`, `airflow_settings.yaml`, `airflow.db`, `__pycache__`, `__MACOSX`) were excluded from the course materials snapshot for security and cleanliness.
+> **Note**: Sensitive or derived local files (`.env`, `airflow_settings.yaml`, `airflow.db`, `__pycache__`, `__MACOSX`) are excluded for security and cleanliness.
 
 ---
 
@@ -161,11 +177,11 @@ All **course section snapshots** from *Apache Airflow: The Hands-On Guide* are p
 ```text
 .
 ├── .github/
-│   ├── ISSUE_TEMPLATE/         # Bug report and feature proposal templates
-│   ├── workflows/ci.yml        # Flake8 linting + Airflow 3 pytest CI pipeline
+│   ├── ISSUE_TEMPLATE/                  # Bug report and feature proposal templates
+│   ├── workflows/ci.yml                 # Flake8 linting + Airflow 3 pytest CI pipeline
 │   └── pull_request_template.md
 ├── course-materials/
-│   └── udemy-hands-on-guide/   # Udemy course section snapshots (reference)
+│   └── udemy-hands-on-guide/            # Udemy course section snapshots (reference)
 │       ├── course_sec_4_2/
 │       ├── course_sec_4_6/
 │       ├── course_sec_4_9/
@@ -174,37 +190,69 @@ All **course section snapshots** from *Apache Airflow: The Hands-On Guide* are p
 │       ├── course_sec_4_12/
 │       └── course_sec_4_13/
 ├── dags/
-│   ├── stock_market.py         # End-to-end API → MinIO → Spark → Postgres pipeline
-│   ├── extractor.py            # API extractor with branching & Asset production
-│   ├── cocktail_loader.py      # Asset-triggered Postgres loader
-│   ├── ecom.py                 # Asset-triggered downstream subscriber
-│   └── celery_parallelism_demo.py
+│   ├── __init__.py
+│   ├── .airflowignore
+│   ├── celery_parallelism_demo.py       # Parallel fan-out demo DAG (Airflow 3 SDK)
+│   ├── cocktail_loader.py               # Asset-triggered Postgres loader
+│   ├── ecom.py                          # Asset-triggered downstream subscriber
+│   ├── extractor.py                     # API extractor with branching & Asset production
+│   └── stock_market.py                  # End-to-end API -> MinIO -> Spark -> Postgres pipeline
 ├── docs/
-│   ├── architecture.md         # Component topology and pipeline diagrams
-│   ├── executors_guide.md      # Sequential, Local, Celery, and Kubernetes guide
-│   ├── learning_journal.md     # Competency matrix
-│   ├── troubleshooting_guide.md # Root-cause analysis & performance tuning report
-│   ├── CONTRIBUTING_GUIDE.md   # Contribution guidelines for this repo
-│   └── COURSE_MATERIALS_GUIDE.md # How to use the Udemy course materials
+│   ├── README.md                        # Documentation index
+│   ├── architecture.md                  # Component topology and pipeline diagrams
+│   ├── celery_dag_pattern.md            # Celery decorator patterns & cpu/gpu routing guide
+│   ├── course_materials_guide.md        # How to use the Udemy course materials
+│   ├── dag_authoring_guide.md           # DAG conventions, Asset rules, CI guardrails
+│   ├── executors_guide.md               # Sequential, Local, Celery, and Kubernetes guide
+│   ├── learning_journal.md              # Engineering competency matrix
+│   ├── troubleshooting_guide.md         # Root-cause analysis & performance tuning report
+│   └── diagrams/
+│       ├── celery_dag_flow.mmd          # Celery DAG task flow & queue routing diagram
+│       └── celery_decorator_fix.mmd     # Before/after decorator syntax fix diagram
 ├── include/
-│   ├── datasets.py             # Shared Airflow Asset definitions
-│   ├── tasks.py                # Cocktail extraction and validation helpers
-│   ├── extractor/callbacks.py  # Success/failure DAG lifecycle callbacks
-│   └── stock_market/tasks.py   # MinIO S3 and Yahoo Finance client utilities
+│   ├── __init__.py
+│   ├── datasets.py                      # Shared Airflow Asset definitions
+│   ├── tasks.py                         # Cocktail extraction and validation helpers
+│   ├── extractor/
+│   │   ├── __init__.py
+│   │   └── callbacks.py                 # Success/failure DAG lifecycle callbacks
+│   └── stock_market/
+│       ├── __init__.py
+│       └── tasks.py                     # MinIO S3 and Yahoo Finance client utilities
 ├── infra/
-│   ├── celery/docker-compose.yaml # Distributed Celery + Redis reference stack
-│   └── kubernetes/values.yaml  # Helm chart configuration for KubernetesExecutor
+│   ├── README.md                        # Infrastructure templates overview
+│   ├── celery/
+│   │   ├── README.md                    # Multi-queue Celery stack usage guide
+│   │   ├── .env.example                 # Celery stack environment template
+│   │   ├── docker-compose.yaml          # Airflow 2.10.5 Celery + Redis + Flower + cpu/gpu workers
+│   │   └── dags/celery.py               # Multi-queue cpu/gpu Celery routing DAG
+│   └── kubernetes/
+│       └── values.yaml                  # Helm chart configuration for KubernetesExecutor
+├── plugins/
+│   └── .gitkeep                         # Custom Airflow plugins directory
 ├── spark/
-│   ├── master/                 # Spark Master Dockerfile and entrypoint
-│   ├── worker/                 # Spark Worker Dockerfile and entrypoint
-│   └── notebooks/stock_transform/ # PySpark ETL job & app Dockerfile
-├── tests/dags/
-│   ├── test_dag_example.py
-│   └── test_dag_integrity.py   # Import, cycle, tag, retry, and AST guardrail tests
-├── airflow_settings.example.yaml
-├── docker-compose.override.yml # Airflow 3 network + optional stock-market stack
+│   ├── master/                          # Spark Master Dockerfile and entrypoint
+│   ├── worker/                          # Spark Worker Dockerfile and entrypoint
+│   └── notebooks/stock_transform/       # PySpark ETL job & app Dockerfile
+├── tests/
+│   ├── dags/
+│   │   └── test_dag_integrity.py        # Import, cycle, tag, retry, and AST guardrail tests
+│   └── unit/
+│       ├── __init__.py
+│       └── test_cocktail_tasks.py       # Offline mocked unit tests for cocktail task helpers
+├── .dockerignore
+├── .env.example                         # Local Astro concurrency tuning template
+├── .gitignore
+├── airflow_settings.example.yaml        # Local Airflow Connections & Variables template
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── docker-compose.override.yml          # Airflow 3 network + optional stock-market stack
 ├── Dockerfile
-└── requirements.txt
+├── LICENSE
+├── packages.txt
+├── requirements.txt
+├── SECURITY.md
+└── SUPPORT.md
 ```
 
 ---
@@ -223,7 +271,7 @@ cp .env.example .env
 cp airflow_settings.example.yaml airflow_settings.yaml
 ```
 
-### 2. Start Core Airflow Stack (Lightweight Mode)
+### 2. Start Core Airflow 3 Stack (Lightweight Mode)
 
 Starts `api-server`, `scheduler`, `dag-processor`, `triggerer`, and `postgres` with tuned local parallelism:
 
@@ -248,35 +296,59 @@ COMPOSE_PROFILES=stock-market astro dev start
 | **Spark Master UI** | `http://localhost:8082` | — |
 | **Metabase BI** | `http://localhost:3001` | Setup wizard on first launch |
 
+### 4. Start Distributed Celery Multi-Queue Stack (Optional)
+
+To test `CeleryExecutor` with dedicated `cpu` and `gpu` queues and Flower monitoring:
+
+```bash
+cd infra/celery
+cp .env.example .env
+docker compose --profile flower up -d
+```
+
+See [`infra/celery/README.md`](infra/celery/README.md) for service endpoints and queue routing verification.
+
 ---
 
 ## Testing & CI/CD Guardrails
 
-Run the full validation suite locally or via Docker:
+Run linting and tests locally:
 
 ```bash
-pytest tests/ -v
+# Syntax & complexity lint
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.astro,venv,.venv,__pycache__,spark,course-materials
+
+# Run DAG integrity, AST guardrail, and unit tests (Linux/WSL2/Docker/`astro dev pytest`)
+pytest tests/ -v --tb=short
+
+# On native Windows (where Airflow DagBag requires POSIX fcntl), run unit + AST tests:
+pytest tests/unit/ -v && pytest tests/dags/test_dag_integrity.py -k test_no_top_level_variable_or_hook_calls -v
 ```
 
 Automated checks executed by [CI Workflow](.github/workflows/ci.yml):
-1. **Syntax & Complexity Linting**: `flake8` validates Python syntax and undefined symbols.
-2. **DagBag Import Verification**: Confirms every DAG parses cleanly with zero import errors.
-3. **Cycle & Best-Practice Checks**: Ensures acyclic graphs, tags, descriptions, and `retries >= 2`.
-4. **AST Anti-Pattern Guardrail**: Scans module bodies to block top-level `Variable.get` and `BaseHook.get_connection` calls.
+
+1. **Syntax & Complexity Linting**: `flake8` validates Python syntax, undefined names, and complexity limits.
+2. **Import & Syntax Verification**: Imports all `include/` and root `dags/` modules and syntax-checks standalone scripts (`infra/celery/dags/celery.py`, `spark/notebooks/stock_transform/stock_transform.py`).
+3. **DagBag Integrity & Best-Practice Checks**: Confirms every expected DAG parses cleanly with zero import errors, acyclic graphs, tags, descriptions, and `retries >= 2`.
+4. **AST Anti-Pattern Guardrail**: Scans module bodies in `dags/` and `include/` to block top-level `Variable.get` and `BaseHook.get_connection` calls.
+5. **Mocked Unit Tests**: Verifies cocktail extraction and validation helpers without external network or DB dependencies.
 
 ---
 
 ## Documentation Index
 
+- [Documentation Hub](docs/README.md)
 - [Architecture & Pipeline Diagrams](docs/architecture.md)
-- [Troubleshooting & Performance Case Study](docs/troubleshooting_guide.md)
+- [DAG Authoring & Engineering Conventions](docs/dag_authoring_guide.md)
 - [Airflow Executors & Scaling Guide](docs/executors_guide.md)
+- [Celery DAG Pattern & Queue Routing Guide](docs/celery_dag_pattern.md)
+- [Troubleshooting & Performance Case Study](docs/troubleshooting_guide.md)
 - [Competency & Engineering Matrix](docs/learning_journal.md)
-- [Contribution Guidelines](docs/CONTRIBUTING_GUIDE.md)
-- [Course Materials Guide](docs/COURSE_MATERIALS_GUIDE.md)
+- [Course Materials Guide](docs/course_materials_guide.md)
+- [Infrastructure Templates Overview](infra/README.md)
 
 ---
 
 ## Contributing & Support
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to contribute, [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for community standards, and [`SECURITY.md`](SECURITY.md) for security disclosure policy.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to contribute, [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for community standards, [`SECURITY.md`](SECURITY.md) for vulnerability disclosure, and [`SUPPORT.md`](SUPPORT.md) for help resources.

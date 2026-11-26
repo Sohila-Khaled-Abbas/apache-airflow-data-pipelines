@@ -1,0 +1,45 @@
+# Local Development Connections & Variables Configuration Template
+# Duplicate this file to airflow_settings.yaml to customize for your environment.
+
+airflow:
+  connections:
+    - conn_id: cocktail_db
+      conn_type: postgres
+      conn_host: postgres
+      conn_schema: postgres
+      conn_login: postgres
+      conn_password: postgres
+      conn_port: 5432
+      conn_extra:
+
+    - conn_id: postgres
+      conn_type: postgres
+      conn_host: postgres
+      conn_schema: postgres
+      conn_login: postgres
+      conn_password: postgres
+      conn_port: 5432
+      conn_extra:
+
+    - conn_id: minio
+      conn_type: aws
+      conn_login: minio
+      conn_password: minio123
+      conn_extra:
+        endpoint_url: http://minio:9000
+
+    - conn_id: stock_api
+      conn_type: http
+      conn_host: https://query1.finance.yahoo.com
+      conn_extra:
+        endpoint: /v8/finance/chart/
+        headers:
+          User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+
+  pools: []
+
+  variables:
+    - variable_name: api
+      variable_value: https://www.thecocktaildb.com/api/json/v1/1/random.php
+    - variable_name: environment
+      variable_value: development

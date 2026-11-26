@@ -58,6 +58,7 @@ jobs:
           AIRFLOW_HOME: ${{ github.workspace }}
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
           AIRFLOW__CORE__UNIT_TEST_MODE: "True"
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           airflow db migrate
           pytest tests/ -v --tb=short
